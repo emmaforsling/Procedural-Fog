@@ -1,0 +1,102 @@
+<script>
+/** ====================================== **/ 
+			/*				Landscape Texture 			*/ 
+			/** ====================================== **/			
+			// Get normalized object coordinates
+			// px = fragWorldPos.x / (planeWidth/3.0) + 0.5;
+			// py = fragWorldPos.y / (planeHeight/3.0) + 0.5;
+
+			// // Compute new sampling position (uv coordinates)
+			// float samplePos_x = px + offset_x;
+			// float samplePos_y = py + offset_y;
+
+			// // Texture tiling/repeating
+			// samplePos_x = (samplePos_x < 0.0) ? mod(samplePos_x + 1.0, 1.0) : mod(samplePos_x, 1.0);
+			// samplePos_y = (samplePos_y < 0.0) ? mod(samplePos_y + 1.0, 1.0) : mod(samplePos_y, 1.0);
+
+			// // Create 2D uv coordinates
+			// vec2 texCoord2D_landscape = vec2(samplePos_x, samplePos_y);
+			// // Sample seabed texture at these coordinates
+			// refractionColor = texture2D(landscape_Texture, texCoord2D_landscape) * refractionDist;			//landscape texture
+
+// Testar att använda filter för att blurra bilden, dock kommer detta ej bli effektivt.
+			float h = 0.01; 
+			// vec4 refractionColorXNegY = textureCube(cubeMap, normalize(viewDirectionWorldSpace + vec3(-h,0.0, 0.0) )); // * refractionDist;
+			// vec4 refractionColorXPosY = textureCube(cubeMap, normalize(viewDirectionWorldSpace + vec3(h, 0.0, 0.0) ) ); // * refractionDist;
+
+			// // Textur kontroller (obs kommer kosta mkt)
+			// vec4 refractionColorYNegX = textureCube(cubeMap, normalize(viewDirectionWorldSpace + vec3(0.0,-h, 0.0) ) ); // * refractionDist;
+			// vec4 refractionColorYPosX = textureCube(cubeMap, normalize(viewDirectionWorldSpace + vec3(0.0, h, 0.0) ) ); // * refractionDist;
+
+			// vec4 refractionColorYPosXNeg = textureCube(cubeMap, normalize(viewDirectionWorldSpace + vec3(-h,h, 0.0)) ); // * refractionDist;
+			// vec4 refractionColorYPosXPos = textureCube(cubeMap, normalize(viewDirectionWorldSpace + vec3(h,h, 0.0) ) ); // * refractionDist;
+			// vec4 refractionColorYNegXPos = textureCube(cubeMap, normalize(viewDirectionWorldSpace + vec3(h,-h,0.0) ) ); // * refractionDist;
+			// vec4 refractionColorYNegXNeg = textureCube(cubeMap, normalize(viewDirectionWorldSpace + vec3(-h,-h, 0.0)) ); // * refractionDist;
+
+			// float weight = 1.0;
+			// Comparing the choosen radius (with noise) with the computed radius
+			// and change gl_FragColor in this area.
+			// if(currentMousePosition != vec3(6666.0,6666.0,0.0) && (radiusForANoiseCircle <= radius * tempNoise) /*|| radiusForANoiseCircle <= radius * tempNoise) && time < 30.0*/){
+				
+			// 	weight = 1.0;
+			// 	vec4 tempColor = vec4(mix(fogColor, lightColor, fogFactor * weight),1.0);	
+			// 	gl_FragColor = vec4( mix( vec3(refractionColor), vec3(tempColor), fogFactor * weight ) , 1.0);
+			// 	// gl_FragColor = vec4(mix( vec3(refractionColor), tempColor, fogFactor * weight) ,1.0 ); //vec3(refractionColor); 
+
+			// 	// gl_FragColor 	+= 	0.5 * (0.0625 * refractionColorYPosXNeg + 0.125 * refractionColorYPosX + 0.0625 * refractionColorYPosXPos
+			//  					// +	0.125  * refractionColorYNegX 	 + 0.25  * refractionColor 	    + 0.125  * refractionColorXPosY
+			//  					// +	0.0625 * refractionColorYNegXNeg + 0.125 * refractionColorYNegX + 0.0625 * refractionColorYNegXPos);
+
+			//  	// gl_FragColor += 0.5 * hiddenMessageColor;
+
+			// 	// gl_FragColor =  0.125 * refractionColorXNegY + 0.25 * refractionColor + 0.125 * refractionColorXPosY + 0.5 * hiddenMessageColor  + 0.0 * vec4(diffuseColor * diffuseLighting + specularColor * specularLighting, 1.0);
+			// 	isActivated = true;
+
+
+			// 	// gl_FragColor =  0.5 * vec4( vec3( n, n, n ), 1.0 ) + 0.125 * refractionColorXNegY + 0.25 * refractionColor + 0.125 * refractionColorXPosY + 0.5 * hiddenMessageColor  + 0.0 * vec4(diffuseColor * diffuseLighting + specularColor * specularLighting, 1.0);
+			// 	// gl_FragColor = 0.5 * vec4( vec3( n, n, n ), 1.0 ) + vec4(diffuseColor * diffuseLighting + specularColor * specularLighting, 1.0);
+			// }
+			// if(currentMousePosition != vec3(6666.0,6666.0,0.0) && (0.75 * radiusForANoiseCircle <= radius * tempNoise)){
+			// 	weight = 0.5;
+			// 	vec4 tempColor = vec4(mix(fogColor, lightColor, fogFactor * weight),1.0);	
+				// gl_FragColor = vec4( mix( vec3(refractionColor), vec3(tempColor), fogFactor * weight ) , 1.0);
+			// }
+			// if(currentMousePosition != vec3(6666.0,6666.0,0.0) && (0.5 * radiusForANoiseCircle <= radius * tempNoise) ){
+			// 	weight = 0.5;
+			// 	vec4 tempColor = vec4(mix(fogColor, lightColor, fogFactor * weight),1.0);	
+			// 	gl_FragColor = vec4( mix( vec3(refractionColor), vec3(tempColor), fogFactor * weight ) , 1.0);	
+			// }
+			// if(currentMousePosition != vec3(6666.0,6666.0,0.0) && (0.25 * radiusForANoiseCircle <= radius * tempNoise) ){
+			// 	weight = 1.0;
+			// 	vec4 tempColor = vec4(mix(fogColor, lightColor, fogFactor * weight),1.0);	
+			// 	gl_FragColor = vec4( mix( vec3(refractionColor), vec3(tempColor), fogFactor * weight ) , 1.0);
+			// }
+
+			// gl_FragColor = smoothstep(refractionColor, fogFactor);
+			/*  
+			* 	Meddelandet från texturen är i svart.
+			* 	Filterkärna:
+			*		1 2 1
+			*		2 4 2  / 16
+			*		1 2 1 
+			**/ 
+			// if( hiddenMessageColor.x <= 0.75 || hiddenMessageColor.y <= 0.75 || hiddenMessageColor.z <= 0.75){
+			 //	weight = 1.0;
+			 	// gl_FragColor 	= 	0.5 * (0.0625 * refractionColorYPosXNeg + 0.125 * refractionColorYPosX + 0.0625 * refractionColorYPosXPos
+			 					// +	0.125  * refractionColorYNegX 	 + 0.25  * refractionColor 	    + 0.125  * refractionColorXPosY
+			 					// +	0.0625 * refractionColorYNegXNeg + 0.125 * refractionColorYNegX + 0.0625 * refractionColorYNegXPos);
+			 	// gl_FragColor += 0.5 * vec4(mix(fogColor, lightColor, (1.0 - fogFactor) * weight ),1.0);
+			 	
+			 	// gl_FragColor += 0.5 * vec4(diffuseColor * diffuseLighting + specularColor * specularLighting, 1.0);
+			 	// gl_FragColor = 1.0 * refractionColor + 0.0 * hiddenMessageColor + 0.5 * vec4(diffuseColor * diffuseLighting + specularColor * specularLighting, 1.0);// + tempNoise * vec4(0.5,0.5,0.5,0.);
+			  //}
+
+			// if(isActivated == false){
+			// 	gl_FragColor = 1.0 * refractionColor + 0.0 * hiddenMessageColor + 0.5 * vec4(diffuseColor * diffuseLighting + specularColor * specularLighting, 1.0);
+			// }
+			
+
+			// gl_FragColor = 1.0 * hiddenMessageColor + vec4(diffuseColor * diffuseLighting + specularColor * specularLighting, 1.0);
+
+
+</script>
