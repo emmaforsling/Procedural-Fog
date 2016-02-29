@@ -318,9 +318,9 @@ if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
 
 			function changeToFogTwo(currentTime){
 				if(isClicked == true && currentTime >= 5){
-					radius_for_the_fog -= 0.01 * increasingSizeFactorForTheFog * 0.01;
+					radius_for_the_fog -= 0.01 * increasingSizeFactorForTheFog * 0.2;
 				} else if(isClicked == true && currentTime < 5){
-					radius_for_the_fog += 0.05 * increasingSizeFactorForTheFog * 0.01;
+					radius_for_the_fog += 0.05 * increasingSizeFactorForTheFog * 0.2;
 				} else{
 				 	radius_for_the_fog = 0.0;
 				}					
