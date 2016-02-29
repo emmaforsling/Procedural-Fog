@@ -421,7 +421,7 @@
 		varying vec4 lightPositionWorldSpace;
 	
 		vec3 viewDirectionWorldSpace;
-		vec4 refractionColor;
+		vec4 backgroundColor;
 		vec4 hiddenMessageColor;
 		vec4 blurryColor;
 
@@ -450,8 +450,8 @@
 			float dist = 0.0;
 			dist = (gl_FragCoord.z / gl_FragCoord.w);
 
-			float noisy = surface3(vec3(refractionColor));
-			float check = surface3(vec3(refractionColor));
+			float noisy = surface3(vec3(backgroundColor));
+			float check = surface3(vec3(backgroundColor));
 			if(noisy < check)
 				noisy = 1.0;
 
@@ -482,6 +482,7 @@
 			float dist = 0.0;
 			dist = (gl_FragCoord.z / gl_FragCoord.w);
 
+			// Calculate a fogFactor for an exponential fog, inspired by link: http://in2gpu.com/2014/07/22/create-fog-shader/
 			float fogFactor = 0.0;
 			fogFactor = 1.0 /exp( dist);				// exponential fog
    			fogFactor = clamp( fogFactor, 0.0, 1.0 );
@@ -490,22 +491,20 @@
    			// Check if the hiddenMessageColor is < 0.7 (ergo, a secret message)
    			// 	IF TRUE: Mix the blurry background color with the fogColor 
    			// 	ELSE: 	 Mix the blurry background color with the hiddenMessageColor and then with the fogColor.
+   			// The mix function works like this: mix(fogColor, blurryColor, fogFactor) == fogColor*(1-fogFactor) + blurryColor*fogFactor
    			vec4 fogColorMix = vec4(0.0,0.0,0.0,0.0);
    			fogColorMix = (hiddenMessageColor.x < 0.7 || hiddenMessageColor.y < 0.7 || hiddenMessageColor.z < 0.7) 	?
-   			 				( vec4( mix( fogColor, vec3(blurryColor), fogFactor ), 1.0 ) )				: 
+   			 				( vec4( mix( fogColor, vec3(blurryColor), fogFactor ), 1.0 ) )							: 
    							( vec4( mix( mix( vec3(blurryColor) , vec3(hiddenMessageColor), 1.0 - fogFactor), fogColor, fogFactor ), 1.0 ) );
 
    			// Return vec4, containting (a mixture of) the fogColorMix and blurryColor, depending on how large the valur fogValue is.
 			return (1.0 - fogValue) * fogColorMix + fogValue * blurryColor;
-		
-			// mix(fogColor, lightColor, fogfactor)
-			// mix function fogColor⋅(1−fogFactor) + lightColor⋅fogFactor
 		}
 
 		/* Function noFog() will only display the background cube map since no fog is on it */
 		vec4 noFog()
 		{
-			return textureCube(cubeMap, viewDirectionWorldSpace);
+			return backgroundColor;
 		}
 
 
@@ -515,9 +514,7 @@
 			vec3 diffuseColor = vec3(0.1, 0.1, 0.1);
 			vec3 specularColor = vec3(1.0, 1.0, 1.0);
 			viewDirectionWorldSpace = -normalize(cameraPosWorldSpace - fragWorldPos.xyz);
-			vec3 lightDirectionWorldSpace = normalize(fragWorldPos.xyz - lightPositionWorldSpace.xyz);
-
-			
+			vec3 lightDirectionWorldSpace = normalize(fragWorldPos.xyz - lightPositionWorldSpace.xyz);		
 
 			/** ====================================== **/ 
 			/*				Diffuse lighting 			*/ 
@@ -579,7 +576,7 @@
 			/** ====================================== **/ 
 			/*		Refraction color from the cubeMap 	*/ 
 			/** ====================================== **/
-			refractionColor = textureCube(cubeMap, viewDirectionWorldSpace);
+			backgroundColor = textureCube(cubeMap, viewDirectionWorldSpace);
 
 			/** ====================================== **/ 
 			/*		Create Fog shape x^2 + y^2 = r^2 	*/ 
@@ -595,40 +592,36 @@
 												pow(fragWorldPos.y - currentMousePosition.y, 2.0) );
 			
 			// Create some noise
-			float frequency2 = 0.1;
 			float tempNoise2 = snoise(fragWorldPos.xyz * noise_frequency) + 1.5;		//[]	
-			float tempNoise3 = surface3(fragWorldPos.xyz * frequency2);														// myror
+			float tempNoise3 = surface3(fragWorldPos.xyz * noise_frequency);														// myror
 			// float tempNoise3 = pnoise(fragWorldPos, vec3(0, 0 , time)) * 1.0;
 
-			float padding = 0.2;
-			float fogOutline = radius * tempNoise2;// + tempNoise2;			
-			// Add noise to the actual radius and compare it with the computed radius, 
-				// and determine if fog or no fog shall be created
-			// gl_FragColor = (distanceToMouseFromFragmentPosition <= fogOutline) ? 
-								// ( fog(fragWorldPos.xyz) ) : 
-									// ( (distanceToMouseFromFragmentPosition <= fogOutline + padding) ? 
-										// (fogTheOutline(fragWorldPos.xyz) ) : ( noFog() ) );
+
+			/* 
+			* Create and set fogOutline to the actual radius and ad simplex noise (in order to get a varied shape of the fog) 
+			* This variable can then be used later in order to determine if fog or no fog shall be created, 
+			* 	(by comparing it with the computed distanceToMouseFromFragment).
+			*/
+			float fogOutline = radius * tempNoise2;			
 			
-			
-			
+			/** 
+			*	Perform smoothstep() in order to get a smooth transition, with min set to 0.0 and max set to the fogOutline, 
+			* 		and x to the distanceToMouseFromFragmentPosition
+			* 	smoothstep() perfroms a Hermite interpolation (between 0 and 1): returns 3t^2 + 2t^3
+			*		where t = clamp((x - min)(max - min), 0.0, 1.0)
+			*  		to note: results are undefined if max <= min
+			**/
 			float smoothy = smoothstep(0.0, fogOutline, distanceToMouseFromFragmentPosition);		// if returns 1.0 then no fog, if 0.0 mycket fog
 			
+			/** 
+			*	Set gl_FracColor 
+			*  	When using smoothstep: 0.0 < distanceToMouseFromFragmentPosition < fogOutline, have to be fulfilled  
+			*  	Check if this is fulfilled and use the smooth transition variable smoothy in order to say which parts that should have fog or not
+			*  	The mystery function can be activated by the user, if it is call this function instead of the fog function.
+			**/
 			gl_FragColor = (mystery_function == 0) ?
-							(	(distanceToMouseFromFragmentPosition < fogOutline /*&& distanceToMouseFromFragmentPosition > 0.0*/) ? (1.0 - smoothy) * fog(fragWorldPos.xyz) + smoothy * noFog() : noFog() ) :
+							(	(distanceToMouseFromFragmentPosition < fogOutline && distanceToMouseFromFragmentPosition > 0.0) ? (1.0 - smoothy) * fog(fragWorldPos.xyz) + smoothy * noFog() : noFog() ) :
 							( 	(distanceToMouseFromFragmentPosition < fogOutline && distanceToMouseFromFragmentPosition > 0.0) ? (1.0 - smoothy) * mysteryFunction(fragWorldPos.xyz) : noFog()	);
-
-
-
-			/* Testar att göra fog /color */
-			// vec3 lightColor = vec3(diffuseColor * diffuseLighting + specularColor * specularLighting);
-
-			// //vec3 lightColor = vec3(diffuseColor * diffuseLighting + specularColor * specularLighting);
-			
- 	
-			/* slut på test*/
-
-			
-			
 			
 		}
 		</script>
