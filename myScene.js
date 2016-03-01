@@ -239,7 +239,7 @@ if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
 
 			function onDocumentMouseDown( event ) {
 
-				event.preventDefault();
+				// event.preventDefault();
 
 				var tempMouse = new THREE.Vector2();
 				// Update the position for the mouse
@@ -260,6 +260,7 @@ if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
 					start = Date.now();
 					increasingSizeFactorForTheFog  = gui_content.Radius;
 					fogOneOrTwo = gui_content.FogOneOrTwo;
+
 					x = 0.0;
 						
 					 
