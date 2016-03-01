@@ -3,9 +3,7 @@ if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
 			var $container, stats, start;
 			var camera, controls, scene, renderer;
 			
-			// Canvas width and height
-			var plane_width  = 200,
-				plane_height = 200;
+			
 
 			var containerWidth = window.innerWidth,
 				containerHeight = 600;
@@ -16,23 +14,12 @@ if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
 
 			// Uniforms for the shader
 			var uniforms;
-
-			var sea_depth = 1.0;
-			var sky_height = 1.0;
-			var ampl_gain = 1.0;
-
-
-			var skyBox;
-
-			var sun_position;
 			
-			// Mouse position
-			var mouse;									// [-1, 1]
-			var DEFAULT_MOUSEPOSITION = 6666.0;			//
+			var sun_position;
 
 			// Meshes
-			var glassWindow;
-			var rightWall, leftWall, 
+			var windowPane;							// uses shaderMaterial
+			var rightWall, leftWall, 				// uses shaderMaterial2
 				backWall1, backWall2, 
 				backWall3, backWall4, 
 				floor, ceiling,
@@ -41,36 +28,34 @@ if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
 				windowCross1, windowCross2,
 				door, doorknob;
 
-			var increasingSpeedFactorForTheFog = 2.0;		// större tal på denna gör så att imman växer saktare
-			var increasingSizeFactorForTheFog = 2.0;		// större tal detta är desta större blir imma "cirkeln"
+			// Size of the meshes
+			var plane_width  = 200,
+				plane_height = 200;
 
 			// Plane segments for all the meshes
 			var segments_h = 64,
 				segments_w  = 64;
 
+			// Used in functions changeToFogOne and changeToFogTwo
+			var increasingSpeedFactorForTheFog = 2.0;		// större tal på denna gör så att imman växer saktare
+			var increasingSizeFactorForTheFog = 2.0;		// större tal detta är desta större blir imma "cirkeln"
+			var x = 0.0;
+			var isClicked;
+
 			// Used to store all meshes available, and is then used for the mouse controll to check if a mesh is clicked
 			var objects = [];
 
 			// Texture
-			var landscape_tex;
 			var hidden_message_tex;
-
-			var radius_for_the_fog;
 			
-			var isClicked;
-
 			// Gui components
 			var fogOneOrTwo;
 			var mystery;
-
-			// used for the radius of the fog
-			// var x = -2;
-			var x = 0.0;
+			var radius_for_the_fog;
 
 			console.log("Initializing!");
 			init();
 			console.log("Start rendering!");
-			//render();
 
 			function animate() {
 				//console.log("Animating!");
@@ -80,64 +65,52 @@ if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
 			}
 
 			function init() {
+				// Initialize the sun position
 				sun_position = new THREE.Vector3();
 				sun_position.x = -200.0; sun_position.y = 2000.0; sun_position.z = 300.0;
 
-				isClicked = false;
+				// Initialize variables to default values
+				isClicked = false;				// isClicked to false, since the no click have been made on the window pane
+				start = Date.now();				// the start time to the current time
+				radius_for_the_fog = 0.0;		// the radius for the fog to 0.0
 
-				start = Date.now();
-				radius_for_the_fog = 0.0;
-
-				mouse = new THREE.Vector2();
-				// initializing the mouseposition as a default value, since no position has been clicked
-				mouse.x = DEFAULT_MOUSEPOSITION;
-				mouse.y = DEFAULT_MOUSEPOSITION;
-
+				// Initialize the raycaster (used in onDocumentMouseDown())
 				raycaster = new THREE.Raycaster();
-				// Camera
+				
+				// Initilize the camera
 				camera = new THREE.PerspectiveCamera( 60, window.innerWidth / containerHeight, 1, 2000 );
 				camera.position.z = 50;
 				camera.position.y = -20;
 
-				// Scene
+				// Initialize the scene
 				scene = new THREE.Scene();
 				scene.fog = new THREE.FogExp2( 0x000000, 0.002 );
 
-				// Load landscape texture (that will illustrate the outside of the room)
-				landscape_tex = THREE.ImageUtils.loadTexture( "img/blurr.jpg" );
-				landscape_tex.minFilter = THREE.LinearFilter;
-
+				// Load the hidden message texture
 				hidden_message_tex = THREE.ImageUtils.loadTexture( "img/MySecretMessage.png" );
 				hidden_message_tex.minFilter = THREE.LinearFilter;
-
-				var noiseFreq = 0.1;
+				
 				// Shader uniforms
 				uniforms = {
+				    wall: {type: "i", value: 5},
 				    time: { type: "f", value: start},
-				    mousePosition: {type: "v2", value: mouse},
+
 				    sunPosition: { type: "v3", value: new THREE.Vector3(sun_position.x, sun_position.y, sun_position.z)},
+				    cameraPosWorldSpace: { type: "v3", value: new THREE.Vector3(camera.position.x, camera.position.y, camera.position.z)},
+				    mousePositionWorldSpace: {type: "v3", value: new THREE.Vector3(10,10,0.0)},
+
+				    noise_type: { type: "i", value: 0},
 				    planeWidth: { type: "f", value: plane_width},
 				    planeHeight: { type: "f", value: plane_height},
-				    
-				    seaDepth: { type: "f", value: sea_depth},
-				    skyHeight: { type: "f", value: sky_height},
-				    
-				    window_height: { type: "f", value: window.innerHeight},
-				    window_width: { type: "f", value: window.innerWidth},
+
 				    container_width: { type: "f", value: containerWidth },
 				    container_height: { type: "f", value: containerHeight},
-
-				    mystery_function: {type: "i", value: mystery},
-
-				    mousePositionWorldSpace: {type: "v3", value: new THREE.Vector3(10,10,0.0)},
-				    amplGain: { type: "f", value: ampl_gain},
-				    wall: {type: "i", value: 5},
+				    
 				    radius: {type: "f", value: radius_for_the_fog},
-				    cameraPosWorldSpace: { type: "v3", value: new THREE.Vector3(camera.position.x, camera.position.y, camera.position.z)},
-
-				    noise_frequency: {type: "f", value: noiseFreq},
+				    // Variable that can change if the user uses the GUI components 
+				    mystery_function: {type: "i", value: mystery},
+				    noise_frequency: {type: "f", value: 0.1},
 				    // Textures
-					landscape_Texture: { type: "t", value: landscape_tex},
 					hidden_Texture: {type: "t", value: hidden_message_tex},
 					cubeMap: {type: "t", value: new THREE.ImageUtils.loadTextureCube( ["img/posx.jpg", "img/negx.jpg", "img/posy.jpg", "img/negy.jpg", "img/posz.jpg", "img/negz.jpg"]) },
 					cubeMapBlurr: {type: "t", value: new THREE.ImageUtils.loadTextureCube( ["img/posx.jpg", "img/negx.jpg", "img/posy.jpg", "img/negy.jpg", "img/posz.jpg", "img/blurr.jpg"])},
@@ -176,7 +149,7 @@ if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
 
 
 				// Create the window (with the material shaderMaterial connected to it) and add it to the scene.
-				createGlassWindow();
+				createWindowPane();
 
 				// Create the walls and add them to the scene, shaderMaterial2
 				createWalls();
@@ -186,7 +159,7 @@ if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
 				createWindowCross();
 				createDoor();
 
-				// renderer
+				// Renderer
 				renderer = new THREE.WebGLRenderer( { antialias: false } );
 				renderer.setClearColor( scene.fog.color );
 				renderer.setPixelRatio( window.devicePixelRatio );
@@ -199,7 +172,6 @@ if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
 				// container.appendChild( renderer.domElement );
 
 				// Controls
-				// createSkyBox();
 				createFlyControls();
 				createStats();
 
@@ -216,64 +188,45 @@ if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
 				animate();
 			}
 
-
-			function createSkyBox(){
-				var imagePrefix = "img/";
-				var directions  = ["posx", "negx", "posy", "negy", "posz", "negz"];
-				var imageSuffix = ".jpg";
-				var skyGeometry = new THREE.CubeGeometry( 1000, 1000, 1000 );	
-				var materialArray = [];
-				for (var i = 0; i < 6; i++)
-				materialArray.push( new THREE.MeshBasicMaterial({
-					map: THREE.ImageUtils.loadTexture( imagePrefix + directions[i] + imageSuffix ),
-					side: THREE.BackSide
-				}));
-				var skyMaterial = new THREE.MeshFaceMaterial( materialArray );
-				skyBox = new THREE.Mesh( skyGeometry, skyMaterial );
-				skyBox.rotation.y = 3.14/2;
-				scene.add(skyBox);
-
-			}
-
-
-
 			function onDocumentMouseDown( event ) {
 
-				// event.preventDefault();
-
-				var tempMouse = new THREE.Vector2();
-				// Update the position for the mouse
-				tempMouse.x = ( event.clientX / renderer.domElement.clientWidth ) * 2 - 1;				// mouse.x [-1,1]
-				tempMouse.y = - ( event.clientY / renderer.domElement.clientHeight ) * 2 + 1;			// mouse.y [-1,1]
+				// event.preventDefault();				// in order to get the dropdown list to work for dat.gui, 
+														// event.preventDefault() can't be called.
+				// Get the mouse position that is currently clicked by the user.
+				var currentMousePosition = new THREE.Vector2();
+				currentMousePosition.x = 	( event.clientX / renderer.domElement.clientWidth  ) * 2 - 1;			// mouse.x [-1,1]
+				currentMousePosition.y = - 	( event.clientY / renderer.domElement.clientHeight ) * 2 + 1;			// mouse.y [-1,1]
 				
-				raycaster.setFromCamera( tempMouse, camera );
+				// Create a raycaster containing the currentMousePosition
+				raycaster.setFromCamera( currentMousePosition, camera );
 
+				// Check if the raycaster intersects with the objects added to the variable objects.
 				var intersects = raycaster.intersectObjects( objects );			// returns [{distance, point, face, faceIndex, indices, object},...]
 
-				// Check if the mesh have been clicked on
+				// Check if the mesh (the windowpane) has been clicked on 
 				if ( intersects.length > 0 ) {
+					// update the mouse position (world coordinates) to the shader
 					uniforms.mousePositionWorldSpace.value = intersects[0].point;
-					isClicked = true;
 
-					mouse.x = tempMouse.x;
-					mouse.y = tempMouse.y;
+					// update the start variable
 					start = Date.now();
+
+					// Check the GUI and se if any uniforms have to be updated.
 					increasingSizeFactorForTheFog  = gui_content.Radius;
 					fogOneOrTwo = gui_content.FogOneOrTwo;
 
-					x = 0.0;
-						
-					 
+					if(gui_content.Noise === 'SimplexNoise'){
+						uniforms.noise_type.value = 0;
+					} else if(gui_content.Noise === 'PerlinNoise'){
+						uniforms.noise_type.value = 1;
+					}
+
+					// Update variables used in describing how the fog shall increase/decrease
+					isClicked = true;		// set the boolean isClicked to true, used in changeToFogOne() and changeToFogTwo()	
+					x = 0.0;				// reset x = 0.0, used in function changeToFogOne() 
 
 				} else {
-					console.log("NOT intersecting");
-					console.log(mouse.x);
-					console.log(mouse.y);
-					// console.log(window.innerWidth);
-					// console.log(window.innerHeight);
-					// set the mouse position to default value, so that the shader nows not to consider this value!
-					//mouse.x = DEFAULT_MOUSEPOSITION;
-					//mouse.y = DEFAULT_MOUSEPOSITION;
+					// Update variables used in describing how the fog shall increase/decrease,
 					isClicked = false;
 					x = 0.0;
 				}
@@ -282,28 +235,21 @@ if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
 			}
 
 			function onDocumentTouchStart( event ) {
-				
 				event.preventDefault();
-				
 				event.clientX = event.touches[0].clientX;
 				event.clientY = event.touches[0].clientY;
 				onDocumentMouseDown( event );
-
 			}
 
-			function onWindowResize()
-			{
+			function onWindowResize() {
+				// Update the camera and renderer
 				camera.aspect = window.innerWidth / containerHeight;
 				camera.updateProjectionMatrix();
 				renderer.setSize( window.innerWidth, containerHeight);
 				
+				// Update the uniforms describing the size of the container
 				uniforms.container_height.value = containerHeight;
 				uniforms.container_width.value = containerWidth;
-				
-
-
-				uniforms.window_width.value = window.innerWidth;
-				uniforms.window_height.value = window.innerHeight;
 			}
 
 			/* The fog increases and decreases with the function radius = -sin(x - 3.141/increasingSpeedFactor)/e^(x - 3.141/increasingSizeFactor) */
@@ -316,7 +262,7 @@ if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
 					radius_for_the_fog = 0.0;
 				}
 			}
-
+			/* The fog increase/decreases linearly. */ 
 			function changeToFogTwo(currentTime){
 				if(isClicked == true && currentTime >= 5){
 					radius_for_the_fog -= 0.01 * increasingSizeFactorForTheFog * 0.2;
@@ -332,35 +278,29 @@ if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
 				// Updating sunposition
 				sun_position.x = 4.0 * Math.sin(0.001 * (Date.now() - start)) * 100;
 
+				// Update the uniforms for the sun position, camera position and time.
 				uniforms.sunPosition.value = new THREE.Vector3(sun_position.x, sun_position.y, sun_position.z);
 				uniforms.cameraPosWorldSpace.value = new THREE.Vector3(camera.position.x, camera.position.y, camera.position.z);
 				
+				// Update the uniform time variable, by getting the time now and subtract it with the start time.
 				var currentTime = 0.0025 * (Date.now() - start);
 				uniforms.time.value = currentTime;
 				
-				
+				// Check which fog function that shall be called (describing how fast the fog shall increase/decrease)
 				if(fogOneOrTwo == 0){
 					changeToFogOne() 
 				} else {
 					changeToFogTwo(currentTime);
 				}
 				
+				// Check the GUI and se if any uniforms have to be updated.
 				mystery = gui_content.Mystery;
 				uniforms.mystery_function.value = mystery;
 				uniforms.noise_frequency.value = gui_content.NoiseFrequency;
-							
-				
-				
-
-
-				uniforms.mousePosition.value = mouse;
-				
 				uniforms.radius.value = radius_for_the_fog;
 
+				// Render the scene and update the stats
 				renderer.render( scene, camera );
-				
-
-
 				stats.update();
 			}
 
@@ -392,18 +332,17 @@ if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
 				controls.keys = [ 65, 83, 68 ];
 			}
 
-			function createGlassWindow(){
-				glassWindow = new THREE.Mesh( new THREE.PlaneGeometry(plane_width/3, plane_height/3, segments_w, segments_h), shaderMaterial );
+			function createWindowPane(){
+				windowPane = new THREE.Mesh( new THREE.PlaneGeometry(plane_width/3, plane_height/3, segments_w, segments_h), shaderMaterial );
 				// set default position to (0,0,-100)
-				glassWindow.position.x = 0; glassWindow.position.y = 0; glassWindow.position.z = 0;//-plane_width/2;
+				windowPane.position.x = 0; windowPane.position.y = 0; windowPane.position.z = 0;//-plane_width/2;
 				// update matrix
-				glassWindow.updateMatrix();
-				glassWindow.matrixAutoUpdate = false;
+				windowPane.updateMatrix();
+				windowPane.matrixAutoUpdate = false;
 				// add it to the scene
-				scene.add( glassWindow );
+				scene.add( windowPane );
 
-				objects.push( glassWindow );
-				
+				objects.push( windowPane );
 			}
 
 			/*
