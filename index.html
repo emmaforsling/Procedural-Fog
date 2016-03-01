@@ -53,8 +53,9 @@
 			this.FogOneOrTwo = false;
 			this.Mystery = false;
 			this.NoiseFrequency = 0.1;
-			this.SimplexNoise = true;
-			this.PerlinNoise = false;
+			this.Noise = "SimplexNoise";
+			// this.SimplexNoise = true;
+			// this.PerlinNoise = false;
 		};
 
 		var gui_content;
@@ -67,10 +68,25 @@
 
 			gui_content = new GuiContent();
 			var gui = new dat.GUI();
+			
 
 			gui.add(obj,"Name");
 			var f1 = gui.addFolder('Change Noise');
-			f1.add(gui_content, 'NoiseFrequency', 0.0, 1.0);
+			// Choose from accepted values
+			f1.add(gui_content, 'Noise', [ 'SimplexNoise', 'PerlinNoise'] ).onChange( 
+				function(){
+					console.log("Hejsan");
+					if(gui_content.Noise === 'SimplexNoise'){
+					// console.log("SimplexNoise");
+					} else if(gui_content.Noise === 'PerlinNoise'){
+					// console.log("PerlinNoise");
+					}
+				}
+			);
+			
+			// f1.add(gui_content, 'NoiseFrequency', 0.0, 1.0);
+			// f1.add(gui_content, 'SimplexNoise').listen();
+			// f1.add(gui_content, 'PerlinNoise').listen();
 
 			var f2 = gui.addFolder('Fog shape');
 			f2.add(gui_content, 'Radius', 0.1, 20.0);
@@ -531,10 +547,11 @@
 			vec3 reflectionWorldSpace = 2.0 * interpolatedNormalWorldSpace * dot(interpolatedNormalWorldSpace, lightDirectionWorldSpace) - (lightDirectionWorldSpace);
 			float specularLighting = pow(max(0.0, dot(reflectionWorldSpace, viewDirectionWorldSpace)), specularPower);
 
-			/** ====================================== **/ 
-			/*				Hidden Message 				*/ 
-			/** ====================================== **/ 
+			/** ====================================== **/
+			/*				Hidden Message 				*/
+			/** ====================================== **/
 			// Get normalized object coordinates [0,1]
+			//   note: divided by 3.0 since the size of the glass window (windowframe) is planeWidth/3.0 and planeHeight/3.0
 			float px = fragWorldPos.x / (planeWidth/3.0) + 0.5;
 			float py = fragWorldPos.y / (planeHeight/3.0) + 0.5;
 
@@ -544,42 +561,19 @@
 			// Sample hidden texture texture at these coordinates
 			hiddenMessageColor = texture2D(hidden_Texture, texCoord2D_hiddenMessage);	// hidden texture
 
-			/** ====================================== **/ 
-			/*				Blurry Texture 			*/ 
-			/** ====================================== **/			
-			// Get normalized object coordinates
-			px = fragWorldPos.x / (planeWidth/3.0) + 0.5;
-			py = fragWorldPos.y / (planeHeight/3.0) + 0.5;
-
+			/** ====================================== **/
+			/*				Blurry Texture 				*/
+			/** ====================================== **/
 			// Create 2D uv coordinates
-			vec2 texCoord2D_blurry = vec2(px, py);
-			blurryColor = textureCube(cubeMapBlurr, viewDirectionWorldSpace);			//landscape texture
+			blurryColor = textureCube(cubeMapBlurr, viewDirectionWorldSpace);			// blurry landscape texture
 
-
-			/** ====================================== **/ 
-			/*					Refraction 				*/ 
-			/** ====================================== **/ 
-			// // Compute refraction direction vector
-			// vec3 refractionDirWorldSpace = refract(viewDirectionWorldSpace, interpolatedNormalWorldSpace, 0.75);
-
-			// // Compute angle between refraction and 'down vector'
-			// float cos_alpha = dot(vec3(0.0, 0.0, -1.0), refractionDirWorldSpace);
-			// float alpha = acos(cos_alpha);
-
-			// // Compute sampling offset
-			// float offset_x = tan(alpha) * seaDepth * refractionDirWorldSpace.x;
-			// float offset_y = tan(alpha) * seaDepth * refractionDirWorldSpace.y;
-
-			// // Compute distance traveled (hypothenuse)
-			// float refractionDist = cos_alpha / seaDepth;
-
-			/** ====================================== **/ 
-			/*		Refraction color from the cubeMap 	*/ 
+			/** ====================================== **/
+			/*		Background color from the cubeMap 	*/
 			/** ====================================== **/
 			backgroundColor = textureCube(cubeMap, viewDirectionWorldSpace);
 
-			/** ====================================== **/ 
-			/*		Create Fog shape x^2 + y^2 = r^2 	*/ 
+			/** ====================================== **/
+			/*		Create Fog shape x^2 + y^2 = r^2 	*/
 			/** ====================================== **/
 			// Extract the mousePosition 		
 			vec3 currentMousePosition = vec3(6666.0,6666.0,0.0);
@@ -592,9 +586,9 @@
 												pow(fragWorldPos.y - currentMousePosition.y, 2.0) );
 			
 			// Create some noise
-			float tempNoise2 = snoise(fragWorldPos.xyz * noise_frequency) + 1.5;		//[]	
-			float tempNoise3 = surface3(fragWorldPos.xyz * noise_frequency);														// myror
-			// float tempNoise3 = pnoise(fragWorldPos, vec3(0, 0 , time)) * 1.0;
+			float tempNoise3 = snoise(fragWorldPos.xyz * noise_frequency) + 1.5;	
+			float tempNoise2 = surface3(fragWorldPos.xyz * noise_frequency) + 1.5;
+			//tempNoise2 = cnoise(fragWorldPos.xyz) + 2.0;
 
 
 			/* 
