@@ -47,51 +47,54 @@
 		<!-- GUI -->
 		<script type="text/javascript">
 		
-
+		/* 	Funciton that initializes all variables for the gui window
+		* 		When using dat.gui:
+		*		this.variableName = float 		--> field with slider
+		*		this.variableName = false/true 	--> checkbox field
+		*		this.variableName = "string"	--> string field (in which input/output can be added)
+		*											HOWEVER can also be used for the dropdown list
+		*											describing which item that shall be displayed first.
+		**/
 		GuiContent = function() {
-			this.Radius = 2.0;
-			this.FogOneOrTwo = false;
-			this.Mystery = false;
-			this.NoiseFrequency = 0.1;
-			this.Noise = "SimplexNoise";
-			// this.SimplexNoise = true;
-			// this.PerlinNoise = false;
+			this.Radius = 2.0;			// radius for the fog, uniform: radius
+			this.FogOneOrTwo = false;	// activates functions changeToFogOne() 
+										// or changeToFogTwo() in myScene.js
+			this.Mystery = false;		// activates mysteryFunction() in the fragment shader
+										// uniform: mystery_function
+			this.NoiseFrequency = 0.1;	// How much noise that shall be created. uniform: noise_frequency
+			this.Noise = "SimplexNoise";// First item on the dropdown list
+			this.Name = "Emma Forsling Parborg";
 		};
 
 		var gui_content;
 
+		/**
+		*	The following function creates the GUI window for the program.
+		*	The following variables can be changed by the user. Changes are registered
+		*	in myScene.js in the functions onDocumentMouseDown(event) and render() in which
+		*	the uniforms (for the shader) for them are updated.
+		**/
 		window.onload = function() {
-			var obj = {
-				Name: "Emma Forsling Parborg",
-				num: 28
-			};
-
+			// Create the gui_content in which all variables that shall be displayed
+			// 	in the gui window shall be initialized.
 			gui_content = new GuiContent();
 			var gui = new dat.GUI();
-			
 
-			gui.add(obj,"Name");
+			// Add item to the GUI
+			gui.add(gui_content,"Name");
+			
+			// Add a folder to the gui (First folder)
 			var f1 = gui.addFolder('Change Noise');
-			// Choose from accepted values
-			f1.add(gui_content, 'Noise', [ 'SimplexNoise', 'PerlinNoise'] ).onChange( 
-				function(){
-					console.log("Hejsan");
-					if(gui_content.Noise === 'SimplexNoise'){
-					// console.log("SimplexNoise");
-					} else if(gui_content.Noise === 'PerlinNoise'){
-					// console.log("PerlinNoise");
-					}
-				}
-			);
+			f1.add(gui_content, 'Noise', [ 'SimplexNoise', 'PerlinNoise'] ); // dropdown list containing
+																			 // SimplexNoise and PerlinNoise
+			f1.add(gui_content, 'NoiseFrequency', 0.0, 1.0);				 // intervall [0.0, 1.0]
 			
-			// f1.add(gui_content, 'NoiseFrequency', 0.0, 1.0);
-			// f1.add(gui_content, 'SimplexNoise').listen();
-			// f1.add(gui_content, 'PerlinNoise').listen();
-
+			// Add another folder to the gui (Second folder)
 			var f2 = gui.addFolder('Fog shape');
 			f2.add(gui_content, 'Radius', 0.1, 20.0);
 			f2.add(gui_content, 'FogOneOrTwo');
 
+			// Add another folder to the gui (Third folder)
 			var f3 = gui.addFolder('Other');
 			f3.add(gui_content, 'Mystery');
 
@@ -102,20 +105,54 @@
 	</head>
 
 	<body>
-		
-		<!-- <div class="row"> -->
-            <!-- <div class="col-lg-3 text-center"> </div> -->
-			<!-- <div class="col-lg-6 text-center">  -->
 		<div id="container">
 			<!-- Here some cool stuff will appear! -->
 		</div>
-		<!-- <header> -->
 			<h1> Find the secret message! </h1>
-		<!-- </header> -->
-			<!-- </div> -->
-			<!-- <div class="col-lg-3 text-center"> </div> -->
-		<!-- </div> -->
-		<!-- Shaders -->
+		
+		<!-- **************************************************************************************
+		*********************************************** SHADERS *********************************** 
+		*******************************************************************************************-->
+
+		<!-- Vertex shader for the walls, windowframe, doors etc. -->
+		<script type="x-shader/x-vertex" id="vertexshader-walls">
+			#ifdef GL_ES
+			precision highp float;
+			#endif
+			
+			void main() {	  
+			  gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0);
+			}
+
+		</script>
+
+		<!-- Fragment shader for the walls, windowframe, doors etc. -->
+		<script type="x-shader/x-fragment" id="fragmentshader-walls">
+			#ifdef GL_ES
+			precision highp float;
+			#endif
+
+			uniform int wall;
+
+			void main()
+			{
+				vec4 diffuseLightColor = vec4(0.0, 0.0, 0.0, 1.0);
+				//Different colors for
+				if(wall == 0){									
+					diffuseLightColor = vec4(0.3, 0.3, 0.3, 1.0);	// walls
+				} else if(wall == 1){							
+					diffuseLightColor = vec4(0.5, 0.5, 0.5, 1.0);	// floor, ceiling
+				} else {
+					diffuseLightColor = vec4(0.0,0.0,0.0, 1.0);		// door, windowframes
+				}
+
+				gl_FragColor = diffuseLightColor;
+				
+			}
+
+		</script>
+
+		<!-- Vertex shader for the windowpane -->
 		<script type="x-shader/x-vertex" id="vertexshader">
 			// switch on high precision floats
 			#ifdef GL_ES
@@ -125,9 +162,6 @@
 			uniform float time;
 			uniform float planeWidth;
 			uniform float planeHeight;
-			uniform float seaDepth;
-			uniform float skyHeight;
-			uniform float amplGain;
 			uniform vec3 cameraPosWorldSpace;
 
 			uniform vec3 sunPosition;			
@@ -175,47 +209,8 @@
 			}
 			
 		</script>
-		
-		<script type="x-shader/x-vertex" id="vertexshader-walls">
-			#ifdef GL_ES
-			precision highp float;
-			#endif
-			
-			
 
-			void main() {
-			  
-			  
-			  gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0);
-			}
-
-		</script>
-
-		<script type="x-shader/x-fragment" id="fragmentshader-walls">
-			#ifdef GL_ES
-			precision highp float;
-			#endif
-
-			uniform int wall;
-
-			void main()
-			{
-				vec4 diffuseLightColor = vec4(0.0, 0.0, 0.0, 1.0);
-				//Different colors for
-				if(wall == 0){									
-					diffuseLightColor = vec4(0.3, 0.3, 0.3, 1.0);	// walls
-				} else if(wall == 1){							
-					diffuseLightColor = vec4(0.5, 0.5, 0.5, 1.0);	// floor, ceiling
-				} else {
-					diffuseLightColor = vec4(0.0,0.0,0.0, 1.0);		// door, windowframes
-				}
-
-				gl_FragColor = diffuseLightColor;
-				
-			}
-
-		</script>
-
+		<!-- Fragment shader for the windowpane -->
 		<script type="x-shader/x-fragment" id="fragmentshader">
 		
 		#ifdef GL_ES
@@ -406,40 +401,37 @@
 		/* NOISE ENDS HERE */
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 		
-		// Uniform
+		// Uniforms
 		uniform float time;
-		uniform float seaDepth;
-
-		uniform float skyHeight;
 		
 		uniform float planeWidth;
 		uniform float planeHeight;
-
-		uniform float window_height;
-		uniform float window_width;
 		
 		uniform vec3 cameraPosWorldSpace;
 		
-		uniform sampler2D landscape_Texture;
 		uniform sampler2D hidden_Texture;		// hidden message texture
 		uniform samplerCube cubeMap;			// landscape texture background
-		uniform samplerCube cubeMapBlurr;			// landscape texture background
+		uniform samplerCube cubeMapBlurr;		// landscape texture background
 
-		uniform vec2 mousePosition;				// world coordinates
-		uniform float radius;					// radius of the fog
+		uniform vec2 mousePosition;				
+		uniform vec3 mousePositionWorldSpace;	// world coordinates
+		
+		// Uniforms that can be changed in the GUI
+		uniform int 	mystery_function;		// activates mysterFunction() instead of Fog()
+		uniform float 	noise_frequency;		// how much noise that shall be applied, intervall set to [0.0, 2.0]
+		uniform float 	radius;					// radius of the fog
+		uniform int 	noise_type;				// describe which noise funciton that shall be used for the fog
 
-		uniform vec3 mousePositionWorldSpace;
-		uniform int mystery_function;
-		uniform float noise_frequency;
-
+		// Varying variables set in the vertex shader
 		varying vec3 interpolatedNormalWorldSpace;
 		varying vec4 fragWorldPos;
 		varying vec4 lightPositionWorldSpace;
 	
+		// "Global" variables that is used in functions below
 		vec3 viewDirectionWorldSpace;
-		vec4 backgroundColor;
-		vec4 hiddenMessageColor;
-		vec4 blurryColor;
+		vec4 backgroundColor;			//
+		vec4 hiddenMessageColor;		// The color of the hidden_Texture 
+		vec4 blurryColor;				// The blurry background color derived from cubeMapBlurr
 
 
 		float surface3( vec3 coord ) {
@@ -551,7 +543,7 @@
 			/*				Hidden Message 				*/
 			/** ====================================== **/
 			// Get normalized object coordinates [0,1]
-			//   note: divided by 3.0 since the size of the glass window (windowframe) is planeWidth/3.0 and planeHeight/3.0
+			//   note: divided by 3.0 since the size of the windowpane is planeWidth/3.0 and planeHeight/3.0
 			float px = fragWorldPos.x / (planeWidth/3.0) + 0.5;
 			float py = fragWorldPos.y / (planeHeight/3.0) + 0.5;
 
@@ -565,7 +557,7 @@
 			/*				Blurry Texture 				*/
 			/** ====================================== **/
 			// Create 2D uv coordinates
-			blurryColor = textureCube(cubeMapBlurr, viewDirectionWorldSpace);			// blurry landscape texture
+			blurryColor = textureCube(cubeMapBlurr, viewDirectionWorldSpace);			// blurry texture
 
 			/** ====================================== **/
 			/*		Background color from the cubeMap 	*/
@@ -575,28 +567,25 @@
 			/** ====================================== **/
 			/*		Create Fog shape x^2 + y^2 = r^2 	*/
 			/** ====================================== **/
-			// Extract the mousePosition 		
-			vec3 currentMousePosition = vec3(6666.0,6666.0,0.0);
-			if(mousePosition != vec2(6666.0,6666.0)){			// If (uniform) mouseposition is on the glass window		
-				currentMousePosition = mousePositionWorldSpace;	// Set the currentMousePosition to mouseposition
-			}
-
-			// Calculate the radius for a perfect circle, with the currentMousePosition as the center/origin of the circle.
-			float distanceToMouseFromFragmentPosition = sqrt( pow(fragWorldPos.x - currentMousePosition.x, 2.0) + 
-												pow(fragWorldPos.y - currentMousePosition.y, 2.0) );
+			// Calculate the radius for a perfect circle, with the mousePositionWorldSpace as the center/origin of the circle.
+			float distanceToMouseFromFragmentPosition = sqrt( pow(fragWorldPos.x - mousePositionWorldSpace.x, 2.0) + 
+												pow(fragWorldPos.y - mousePositionWorldSpace.y, 2.0) );
 			
-			// Create some noise
-			float tempNoise3 = snoise(fragWorldPos.xyz * noise_frequency) + 1.5;	
-			float tempNoise2 = surface3(fragWorldPos.xyz * noise_frequency) + 1.5;
-			//tempNoise2 = cnoise(fragWorldPos.xyz) + 2.0;
-
+			/** ====================================== **/
+			/* 				Create some noise 			*/
+			/** ====================================== **/
+			// If noise_type == 0 : Simplex Noise
+			// If noise_type == 1 : Perlin  Noise 
+			float currentNoise = (noise_type == 0) ? snoise(fragWorldPos.xyz * noise_frequency) + 1.5 : cnoise(fragWorldPos.xyz) + 2.0;  
+			// float tempNoise2 = surface3(fragWorldPos.xyz * noise_frequency) + 1.5;
+			
 
 			/* 
 			* Create and set fogOutline to the actual radius and ad simplex noise (in order to get a varied shape of the fog) 
 			* This variable can then be used later in order to determine if fog or no fog shall be created, 
 			* 	(by comparing it with the computed distanceToMouseFromFragment).
 			*/
-			float fogOutline = radius * tempNoise2;			
+			float fogOutline = radius * currentNoise;			
 			
 			/** 
 			*	Perform smoothstep() in order to get a smooth transition, with min set to 0.0 and max set to the fogOutline, 
