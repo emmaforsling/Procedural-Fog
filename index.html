@@ -217,7 +217,19 @@
 		precision highp float;
 		#endif
 
-		/* NOISE */
+		
+	/** ================================================================== **/ 
+	/*							NOISE 										*/ 
+	/** ================================================================== **/ 
+
+		// GLSL textureless classic 3D noise "cnoise",
+		// with an RSL-style periodic variant "pnoise".
+		// Author:  Stefan Gustavson (stefan.gustavson@liu.se)
+		// Version: 2011-10-11
+		//
+		// Copyright (c) 2011 Stefan Gustavson. All rights reserved.
+		// Distributed under the MIT license. See LICENSE file.
+		// https://github.com/ashima/webgl-noise
 
 		vec3 mod289(vec3 x) {
 			return x - floor(x * (1.0 / 289.0)) * 289.0;
@@ -240,8 +252,9 @@
 			return t*t*t*(t*(t*6.0-15.0)+10.0);
 		}
 
-
-		// Classic Perlin noise
+		/** ====================================== **/ 
+		/*			Classic Perlin Noise 			*/ 
+		/** ====================================== **/ 
 		float cnoise(vec3 P)
 		{
 		  vec3 Pi0 = floor(P); // Integer part for indexing
@@ -312,16 +325,18 @@
 		}
 
 			
-	//
-	// Description : Array and textureless GLSL 2D/3D/4D simplex 
-	//               noise functions.
-	//      Author : Ian McEwan, Ashima Arts.
-	//  Maintainer : ijm
-	//     Lastmod : 20110822 (ijm)
-	//     License : Copyright (C) 2011 Ashima Arts. All rights reserved.
-	//               Distributed under the MIT License. See LICENSE file.
-	//               https://github.com/ashima/webgl-noise
-	// 
+		/** ====================================== **/ 
+		/*				Simplex Noise  				*/ 
+		/** ====================================== **/
+
+		// Description : Array and textureless GLSL 2D/3D/4D simplex 
+		//               noise functions.
+		//      Author : Ian McEwan, Ashima Arts.
+		//  Maintainer : ijm
+		//     Lastmod : 20110822 (ijm)
+		//     License : Copyright (C) 2011 Ashima Arts. All rights reserved.
+		//               Distributed under the MIT License. See LICENSE file.
+		//               https://github.com/ashima/webgl-noise
 
 		float snoise(vec3 v)
 		  { 
@@ -391,15 +406,15 @@
 		  p2 *= norm.z;
 		  p3 *= norm.w;
 
-		// Mix final noise value
+		// Mix fin,,,,,,,,kkal noise value
 		  vec4 m = max(0.6 - vec4(dot(x0,x0), dot(x1,x1), dot(x2,x2), dot(x3,x3)), 0.0);
 		  m = m * m;
 		  return 42.0 * dot( m*m, vec4( dot(p0,x0), dot(p1,x1), 
 		                                dot(p2,x2), dot(p3,x3) ) );
 		  }
-///////////////////////////////////////////////////////////////////////////////////////////////////
-		/* NOISE ENDS HERE */
-///////////////////////////////////////////////////////////////////////////////////////////////////
+	/** ================================================================== **/ 
+	/*							NOISE ENDS HERE								*/ 
+	/** ================================================================== **/ 
 		
 		// Uniforms
 		uniform float time;
@@ -444,29 +459,36 @@
 			n += 0.0625 * abs( snoise( coord * 8.0 ) );
 
 			return n;
-
 		}
 
-
-		vec4 mysteryFunction(vec3 pos){
+		/**
+		*	The results from this function was created when trying to create the function fog().
+		*	These functions are quite similar with the exception that this one creates simplex 
+		* 	noise and applies it on the final color that this function returns.
+		**/
+		vec4 mysteryFunction(vec3 pos) {
 			float frequency = 0.2;
 			float fogValue = (cnoise(pos * frequency) + 1.0) / 2.0;				// [0,1]
 
 			// Fog color
 			const vec3 fogColor = vec3(0.7, 0.7,0.7);
 			
+			// distance, dependence to current camera gl_Position
 			float dist = 0.0;
 			dist = (gl_FragCoord.z / gl_FragCoord.w);
 
+			// Create some noise (using the background color)
 			float noisy = surface3(vec3(backgroundColor));
 			float check = surface3(vec3(backgroundColor));
 			if(noisy < check)
 				noisy = 1.0;
 
+			// Calculate a fogFactor for an exponential fog, inspired by link: http://in2gpu.com/2014/07/22/create-fog-shader/
 			float fogFactor = 0.0;
 			fogFactor = 1.0 /exp( dist);
    			fogFactor = clamp( fogFactor, 0.0, 1.0 );
 
+   			// Create the fogColorMix 
    			vec4 fogColorMix = vec4(0.0,0.0,0.0,0.0);
    			fogColorMix = (hiddenMessageColor.x < 0.7 || hiddenMessageColor.y < 0.7 || hiddenMessageColor.z < 0.7) 	?
    			 				( vec4( mix( fogColor, vec3(blurryColor), 1.0 - fogFactor ), 1.0 ) )				: 
@@ -476,8 +498,7 @@
 		}
 
 		/* Function fog() */
-		vec4 fog(vec3 pos)
-		{
+		vec4 fog(vec3 pos) {
 			float frequency = 0.2;
 			// Use the perlin noise function Cnoise, in order to retrieve a pseudo random number
 			// (add one and divide by two, in order to make sure the value is in the intervall 0,1)
@@ -510,18 +531,17 @@
 		}
 
 		/* Function noFog() will only display the background cube map since no fog is on it */
-		vec4 noFog()
-		{
+		vec4 noFog() {
 			return backgroundColor;
 		}
 
 
 	
-		void main()
-		{
+		void main() {
+			
 			vec3 diffuseColor = vec3(0.1, 0.1, 0.1);
 			vec3 specularColor = vec3(1.0, 1.0, 1.0);
-			viewDirectionWorldSpace = -normalize(cameraPosWorldSpace - fragWorldPos.xyz);
+			viewDirectionWorldSpace = - normalize(cameraPosWorldSpace - fragWorldPos.xyz);
 			vec3 lightDirectionWorldSpace = normalize(fragWorldPos.xyz - lightPositionWorldSpace.xyz);		
 
 			/** ====================================== **/ 
