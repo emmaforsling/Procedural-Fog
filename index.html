@@ -6,11 +6,6 @@
 		<meta charset="utf-8">
 		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
 		
-		<!-- Bootstrap Core CSS -->
-    	<!-- <link href="css/bootstrap.min.css" rel="stylesheet"> -->
-
-    	<!-- för att starta en server >> terminal >> python -m SimpleHTTPServer -->
-
 		<style>
 			body {
 				color: #000;
@@ -121,7 +116,7 @@
 			#endif
 			
 			void main() {	  
-			  gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0);
+			  gl_Position  = projectionMatrix * modelViewMatrix * vec4(position,1.0);
 			}
 
 		</script>
@@ -136,7 +131,7 @@
 
 			void main()
 			{
-				vec4 diffuseLightColor = vec4(0.0, 0.0, 0.0, 1.0);
+				vec4 diffuseLightColor  = vec4(0.0, 0.0, 0.0, 1.0);
 				//Different colors for
 				if(wall == 0){									
 					diffuseLightColor = vec4(0.3, 0.3, 0.3, 1.0);	// walls
@@ -146,7 +141,7 @@
 					diffuseLightColor = vec4(0.0,0.0,0.0, 1.0);		// door, windowframes
 				}
 
-				gl_FragColor = diffuseLightColor;
+				gl_FragColor =  diffuseLightColor;
 				
 			}
 
@@ -167,10 +162,10 @@
 			uniform vec3 sunPosition;			
 
 			// varying vec3 interpolatedNormalViewSpace;
-			varying vec3 interpolatedNormalWorldSpace;
+			// varying vec3 interpolatedNormalWorldSpace;
 			// varying vec3 lightDirectionViewSpace;
 			varying vec4 fragWorldPos;
-			varying vec4 lightPositionWorldSpace;
+			//varying vec4 lightPositionWorldSpace;
 			vec3 randVector;
 
 			// varying mat4 test;
@@ -201,10 +196,10 @@
 				// test = mat4(viewMatrix * projectionMatrix);
 				
 				// Transformation of 'varyings'
-				interpolatedNormalWorldSpace = normalize(mat3(modelMatrix) * newNormal);
+				//interpolatedNormalWorldSpace = normalize(mat3(modelMatrix) * newNormal);
 				//interpolatedNormalViewSpace = normalize(mat3(modelViewMatrix) * newNormal);
 				// lightDirectionViewSpace = normalize(mat3(viewMatrix) * normalize(vec3(0.0, 1.0, 1.0)));
-				lightPositionWorldSpace = vec4(sunPosition.x, sunPosition.y, sunPosition.z, 1.0);
+				//lightPositionWorldSpace = vec4(sunPosition.x, sunPosition.y, sunPosition.z, 1.0);
 				fragWorldPos = vec4(displacedPosition, 1.0) * modelMatrix; // gl_Position * modelMatrix;
 			}
 			
@@ -438,9 +433,9 @@
 		uniform int 	noise_type;				// describe which noise funciton that shall be used for the fog
 
 		// Varying variables set in the vertex shader
-		varying vec3 interpolatedNormalWorldSpace;
+		//varying vec3 interpolatedNormalWorldSpace;
 		varying vec4 fragWorldPos;
-		varying vec4 lightPositionWorldSpace;
+		//varying vec4 lightPositionWorldSpace;
 	
 		// "Global" variables that is used in functions below
 		vec3 viewDirectionWorldSpace;
@@ -449,7 +444,11 @@
 		vec4 blurryColor;				// The blurry background color derived from cubeMapBlurr
 
 
-		float surface3( vec3 coord ) {
+		/**
+		*	Function that calls simplex noise function multiple times to get 
+		* 	a pseudo random number, which it returns.
+		**/
+		float createSimplexNoise( vec3 coord ) {
 
 			float n = 0.0;
 
@@ -478,10 +477,7 @@
 			dist = (gl_FragCoord.z / gl_FragCoord.w);
 
 			// Create some noise (using the background color)
-			float noisy = surface3(vec3(backgroundColor));
-			float check = surface3(vec3(backgroundColor));
-			if(noisy < check)
-				noisy = 1.0;
+			float noisy = createSimplexNoise(vec3(backgroundColor));
 
 			// Calculate a fogFactor for an exponential fog, inspired by link: http://in2gpu.com/2014/07/22/create-fog-shader/
 			float fogFactor = 0.0;
@@ -538,27 +534,8 @@
 
 	
 		void main() {
-			
-			vec3 diffuseColor = vec3(0.1, 0.1, 0.1);
-			vec3 specularColor = vec3(1.0, 1.0, 1.0);
 			viewDirectionWorldSpace = - normalize(cameraPosWorldSpace - fragWorldPos.xyz);
-			vec3 lightDirectionWorldSpace = normalize(fragWorldPos.xyz - lightPositionWorldSpace.xyz);		
-
-			/** ====================================== **/ 
-			/*				Diffuse lighting 			*/ 
-			/** ====================================== **/ 
-			float diffuseLighting = max(0.0, dot(vec3(0.0, 0.0, 1.0), interpolatedNormalWorldSpace));		// R = dot(I, N)
-			diffuseLighting = pow(diffuseLighting, 10.0);
-
-			/** ====================================== **/ 
-			/*				Specular lighting 			*/ 
-			/** ====================================== **/ 
 			
-			// Compute reflection direction vector (Blinn-phong)
-			float specularPower = 256.0;
-			vec3 reflectionWorldSpace = 2.0 * interpolatedNormalWorldSpace * dot(interpolatedNormalWorldSpace, lightDirectionWorldSpace) - (lightDirectionWorldSpace);
-			float specularLighting = pow(max(0.0, dot(reflectionWorldSpace, viewDirectionWorldSpace)), specularPower);
-
 			/** ====================================== **/
 			/*				Hidden Message 				*/
 			/** ====================================== **/
@@ -597,7 +574,7 @@
 			// If noise_type == 0 : Simplex Noise
 			// If noise_type == 1 : Perlin  Noise 
 			float currentNoise = (noise_type == 0) ? snoise(fragWorldPos.xyz * noise_frequency) + 1.5 : cnoise(fragWorldPos.xyz) + 2.0;  
-			// float tempNoise2 = surface3(fragWorldPos.xyz * noise_frequency) + 1.5;
+			// float tempNoise2 = createSimplexNoise(fragWorldPos.xyz * noise_frequency) + 1.5;
 			
 
 			/* 
@@ -616,8 +593,10 @@
 			**/
 			float smoothy = smoothstep(0.0, fogOutline, distanceToMouseFromFragmentPosition);		// if returns 1.0 then no fog, if 0.0 mycket fog
 			
+			/** ====================================== **/
+			/* 		gl_FragColor for the windowpane 	*/
+			/** ====================================== **/
 			/** 
-			*	Set gl_FracColor 
 			*  	When using smoothstep: 0.0 < distanceToMouseFromFragmentPosition < fogOutline, have to be fulfilled  
 			*  	Check if this is fulfilled and use the smooth transition variable smoothy in order to say which parts that should have fog or not
 			*  	The mystery function can be activated by the user, if it is call this function instead of the fog function.
@@ -625,7 +604,7 @@
 			gl_FragColor = (mystery_function == 0) ?
 							(	(distanceToMouseFromFragmentPosition < fogOutline && distanceToMouseFromFragmentPosition > 0.0) ? (1.0 - smoothy) * fog(fragWorldPos.xyz) + smoothy * noFog() : noFog() ) :
 							( 	(distanceToMouseFromFragmentPosition < fogOutline && distanceToMouseFromFragmentPosition > 0.0) ? (1.0 - smoothy) * mysteryFunction(fragWorldPos.xyz) : noFog()	);
-			
+
 		}
 		</script>
 		<!-- End Shaders -->
