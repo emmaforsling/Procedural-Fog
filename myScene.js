@@ -37,8 +37,6 @@ var shaderMaterial,			// for the windowpane
 
 // Uniforms for the shader
 var uniforms;
-			
-var sun_position;
 
 // Meshes
 var windowPane;							// uses shaderMaterial
@@ -94,10 +92,6 @@ function animate() {
 * Function that initializes all things for the scene. The function ends with a call to function animate()
 **/
 function init() {
-	// Initialize the sun position
-	sun_position = new THREE.Vector3();
-	sun_position.x = 0.0; sun_position.y = 0.0; sun_position.z = 100.0;
-	
 	// Initialize variables to default values
 	isClicked = false;				// isClicked to false, since the no click have been made on the window pane
 	start = Date.now();				// the start time to the current time
@@ -124,7 +118,6 @@ function init() {
 	    wall: {type: "i", value: 5},
 	    time: { type: "f", value: start},
 
-	    sunPosition: { type: "v3", value: new THREE.Vector3(sun_position.x, sun_position.y, sun_position.z)},
 	    cameraPosWorldSpace: { type: "v3", value: new THREE.Vector3(camera.position.x, camera.position.y, camera.position.z)},
 	    mousePositionWorldSpace: {type: "v3", value: new THREE.Vector3(10,10,0.0)},
 
@@ -210,8 +203,8 @@ function init() {
 	//$container.append(stats.Element);	
 	container.appendChild( stats.domElement );
 
-	document.addEventListener( 'mousedown', onDocumentMouseDown, false );
-	document.addEventListener( 'touchstart', onDocumentTouchStart, false );
+	document.addEventListener( 'mousedown', onDocumentMouseDown, false );			// the event occurs when the user presses a mouse button over an element
+	document.addEventListener( 'touchstart', onDocumentTouchStart, false );			// the event occurs when a finger is placed on a touch screen.
 
 	window.addEventListener( 'resize', onWindowResize, false );
 
@@ -334,8 +327,6 @@ function changeToLinearFog(currentTime){
 **/
 function render()
 {
-	// Update the uniforms for the sun position, camera position and time.
-	uniforms.sunPosition.value = new THREE.Vector3(sun_position.x, sun_position.y, sun_position.z);
 	uniforms.cameraPosWorldSpace.value = new THREE.Vector3(camera.position.x, camera.position.y, camera.position.z);
 	
 	// Update the uniform time variable, by getting the time now and subtract it with the start time.
