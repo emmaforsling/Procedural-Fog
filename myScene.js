@@ -3,7 +3,8 @@
 * Project: Procedural Fog
 * By: Emma Forsling Parborg
 ***********************************
-* This file creates the scene, by utilizing the Three.js API and the FlyControls.js from http://threejs.org/examples/misc_controls_fly 
+* This file creates the scene, by utilizing the Three.js API and the FlyControls.js from http://threejs.org/examples/misc_controls_fly
+* The image used to illustrate the outside (through the windowpane) is from http://learningthreejs.com/data/lets_do_a_sky/lets_do_a_sky.html
 * This file contains following functions:
 * 	animate()
 * 	init()
@@ -13,8 +14,8 @@
 * 	render()
 * 	createStats()
 * 	createControls
-* 	changeToFogOne()			|
-* 	changeToFogTwo(currentTime) | Functions activated by the GUI
+* 	changeToExponentialFog()			|
+* 	changeToLinearFog(currentTime) | Functions activated by the GUI
 * 	createWindowPane() 		|
 * 	createDoor()			|
 * 	createWindowCross()		| Functions that creates and adds the meshes to the scene: 
@@ -58,7 +59,7 @@ var plane_width  = 200,
 var segments_h = 64,
 	segments_w  = 64;
 
-// Used in functions changeToFogOne and changeToFogTwo
+// Used in functions changeToExponentialFog and changeToLinearFog
 var increasingSpeedFactorForTheFog = 2.0;		// större tal på denna gör så att imman växer saktare
 var increasingSizeFactorForTheFog = 2.0;		// större tal detta är desta större blir imma "cirkeln"
 var x = 0.0;
@@ -71,7 +72,7 @@ var objects = [];
 var hidden_message_tex;
 
 // Gui components
-var fogOneOrTwo;
+var alternateFog;
 var mystery;
 var radius_for_the_fog;
 
@@ -127,7 +128,8 @@ function init() {
 	    cameraPosWorldSpace: { type: "v3", value: new THREE.Vector3(camera.position.x, camera.position.y, camera.position.z)},
 	    mousePositionWorldSpace: {type: "v3", value: new THREE.Vector3(10,10,0.0)},
 
-	    noise_type: { type: "i", value: 0},
+	    noise_type_fog_shape: { type: "i", value: 0},
+	    noise_type_fog_color: {type: "i", value: 0},
 	    planeWidth: { type: "f", value: plane_width},
 	    planeHeight: { type: "f", value: plane_height},
 
@@ -137,14 +139,15 @@ function init() {
 	    radius: {type: "f", value: radius_for_the_fog},
 	    // Variable that can change if the user uses the GUI components 
 	    mystery_function: {type: "i", value: mystery},
-	    noise_frequency: {type: "f", value: 0.1},
+	    noise_frequency: {type: "f", value: 0.066},
+	    noise_frequency_for_the_color: {type: "f", value: 0.066},
 	    // Textures
 		hidden_Texture: {type: "t", value: hidden_message_tex},
 		cubeMap: {type: "t", value: new THREE.ImageUtils.loadTextureCube( ["img/posx.jpg", "img/negx.jpg", "img/posy.jpg", "img/negy.jpg", "img/posz.jpg", "img/negz.jpg"]) },
 		cubeMapBlurr: {type: "t", value: new THREE.ImageUtils.loadTextureCube( ["img/posx.jpg", "img/negx.jpg", "img/posy.jpg", "img/negy.jpg", "img/posz.jpg", "img/blurr.jpg"])},
 	};
 
-	// create the custom material
+	// Create custom material for the windowpane 
 	shaderMaterial = new THREE.ShaderMaterial({
 		uniforms: uniforms,
 		vertexShader:   $('#vertexshader').text(),
@@ -152,6 +155,7 @@ function init() {
 		wireframe: false,
 	});
 
+	// Create custom material for the other meshes (with varying variables for the uniform wall - will in the shader determine which color they should have)
 	shaderMaterialBack = new THREE.ShaderMaterial({
 		uniforms: uniforms,
 		uniforms: {wall: {type: "i", value: 0}},
@@ -244,17 +248,26 @@ function onDocumentMouseDown( event ) {
 
 		// Check the GUI and se if any uniforms have to be updated.
 		increasingSizeFactorForTheFog  = gui_content.Radius;
-		fogOneOrTwo = gui_content.FogOneOrTwo;
+		alternateFog = gui_content.AlternateFog;
 
 		if(gui_content.Noise === 'SimplexNoise'){
-			uniforms.noise_type.value = 0;
+			uniforms.noise_type_fog_shape.value = 0;
 		} else if(gui_content.Noise === 'PerlinNoise'){
-			uniforms.noise_type.value = 1;
+			uniforms.noise_type_fog_shape.value = 1;
 		}
 
+		if(gui_content.AddNoise === 'None'){
+			uniforms.noise_type_fog_color.value = 0;
+		} else if(gui_content.AddNoise === 'SimplexNoise') {
+			uniforms.noise_type_fog_color.value = 1;
+		} else if(gui_content.AddNoise === 'PerlinNoise'){
+			uniforms.noise_type_fog_color.value = 2;
+		}
+		radius_for_the_fog = 0.0;
+
 		// Update variables used in describing how the fog shall increase/decrease
-		isClicked = true;		// set the boolean isClicked to true, used in changeToFogOne() and changeToFogTwo()	
-		x = 0.0;				// reset x = 0.0, used in function changeToFogOne() 
+		isClicked = true;		// set the boolean isClicked to true, used in changeToExponentialFog() and changeToLinearFog()	
+		x = 0.0;				// reset x = 0.0, used in function changeToExponentialFog() 
 
 	} else {
 		// Update variables used in describing how the fog shall increase/decrease,
@@ -291,9 +304,9 @@ function onWindowResize() {
 
 /** 
 * Default fog function that updates the radius_for_the_fog variable. Is used to increase/decrease the radius in the shader.
-* This fog, increases/decreases with the function radius = -sin(x - 3.141/increasingSpeedFactor)/e^(x - 3.141/increasingSizeFactor) 
+* This fog, increases/decreases with the function radius = -sin(x/increasingSpeedFactor - 3.141)/e^(x/increasingSizeFactor - 3.141) 
 **/
-function changeToFogOne(){
+function changeToExponentialFog(){
 	if(x!= 666){
 		x = (isClicked) ? (x + 0.01) : (0.0); 
 		radius_for_the_fog = (isClicked) ? ( -1.0/Math.exp(x/increasingSizeFactorForTheFog-3.141) * Math.sin((x/increasingSpeedFactorForTheFog)-3.141) ) : 0.0;			// 3.141 ty då blir det nära noll då x = 0
@@ -306,11 +319,11 @@ function changeToFogOne(){
 * Other fog function that can be activated by the user in the GUI.
 * The fog increase/decreases linearly. 
 **/ 
-function changeToFogTwo(currentTime){
+function changeToLinearFog(currentTime){
 	if(isClicked == true && currentTime >= 5){
-		radius_for_the_fog -= 0.01 * increasingSizeFactorForTheFog * 0.2;
+		radius_for_the_fog -= 0.002 * increasingSizeFactorForTheFog;
 	} else if(isClicked == true && currentTime < 5){
-		radius_for_the_fog += 0.05 * increasingSizeFactorForTheFog * 0.2;
+		radius_for_the_fog += 0.01 * increasingSizeFactorForTheFog;
 	} else{
 	 	radius_for_the_fog = 0.0;
 	}					
@@ -330,16 +343,17 @@ function render()
 	uniforms.time.value = currentTime;
 	
 	// Check which fog function that shall be called (describing how fast the fog shall increase/decrease)
-	if(fogOneOrTwo == 0){
-		changeToFogOne() 
+	if(alternateFog === 'ExponentialFog'){
+		changeToExponentialFog();
 	} else {
-		changeToFogTwo(currentTime);
+		changeToLinearFog(currentTime);
 	}
 	
 	// Check the GUI and se if any uniforms have to be updated.
 	mystery = gui_content.Mystery;
 	uniforms.mystery_function.value = mystery;
 	uniforms.noise_frequency.value = gui_content.NoiseFrequency;
+	uniforms.noise_frequency_for_the_color.value = gui_content.NoiseMagnitude;
 	uniforms.radius.value = radius_for_the_fog;
 
 	// Render the scene and update the stats

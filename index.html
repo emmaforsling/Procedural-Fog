@@ -37,7 +37,7 @@
 		</style>
 
 		<script src="//code.jquery.com/jquery-1.12.0.min.js"></script>
-		<script type="text/javascript" src="js/dat.gui.js"></script>
+		<script type="text/javascript" src="js/libs/dat.gui.js"></script>
 
 		<!-- GUI -->
 		<script type="text/javascript">
@@ -51,17 +51,19 @@
 		*											describing which item that shall be displayed first.
 		**/
 		GuiContent = function() {
-			this.Radius = 2.0;			// radius for the fog, uniform: radius
-			this.FogOneOrTwo = false;	// activates functions changeToFogOne() 
-										// or changeToFogTwo() in myScene.js
-			this.Mystery = false;		// activates mysteryFunction() in the fragment shader
-										// uniform: mystery_function
-			this.NoiseFrequency = 0.1;	// How much noise that shall be created. uniform: noise_frequency
-			this.Noise = "SimplexNoise";// First item on the dropdown list
-			this.Name = "Emma Forsling Parborg";
+			this.Radius = 2.0;			 // radius for the fog, uniform: radius
+			this.Mystery = false;		 // activates mysteryFunction() in the fragment shader
+										 // uniform: mystery_function
+			this.NoiseFrequency = 0.066; // How much noise that shall be created. uniform: noise_frequency
+			this.Noise = "SimplexNoise"; // First item on the dropdown list
+			this.AddNoise = 'None'; 	 // dropdown list for the color/thickness of the fog
+			this.NoiseMagnitude = 0.066; // magnitude for the noise in the dropdown list (color/thickness of the fog)
+			this.Name = "Emma Forsling Parborg"; 
+			this.AlternateFog = 'ExponentialFog'; // dropdown list which enables the user to change between linear and exponential fog
 		};
 
 		var gui_content;
+		var gui;
 
 		/**
 		*	The following function creates the GUI window for the program.
@@ -73,21 +75,25 @@
 			// Create the gui_content in which all variables that shall be displayed
 			// 	in the gui window shall be initialized.
 			gui_content = new GuiContent();
-			var gui = new dat.GUI();
+
+			gui = new dat.GUI();
+			gui.width = 300;
 
 			// Add item to the GUI
 			gui.add(gui_content,"Name");
 			
 			// Add a folder to the gui (First folder)
-			var f1 = gui.addFolder('Change Noise');
+			var f1 = gui.addFolder('Fog Shape');
 			f1.add(gui_content, 'Noise', [ 'SimplexNoise', 'PerlinNoise'] ); // dropdown list containing
 																			 // SimplexNoise and PerlinNoise
-			f1.add(gui_content, 'NoiseFrequency', 0.0, 1.0);				 // intervall [0.0, 1.0]
-			
+			f1.add(gui_content, 'NoiseFrequency', 0.0, 0.1);				 // intervall [0.0, 1.0]
+			f1.add(gui_content, 'Radius', 0.1, 10.0);
+			f1.add(gui_content, "AlternateFog", ['LinearFog', 'ExponentialFog']);
+
 			// Add another folder to the gui (Second folder)
-			var f2 = gui.addFolder('Fog shape');
-			f2.add(gui_content, 'Radius', 0.1, 20.0);
-			f2.add(gui_content, 'FogOneOrTwo');
+			var f2 = gui.addFolder('Fog color');
+			f2.add(gui_content, "AddNoise", ['None', 'SimplexNoise', 'PerlinNoise']);
+			f2.add(gui_content, "NoiseMagnitude", 0.0, 0.1);
 
 			// Add another folder to the gui (Third folder)
 			var f3 = gui.addFolder('Other');
@@ -154,53 +160,15 @@
 			precision highp float;
 			#endif
 			
-			uniform float time;
-			uniform float planeWidth;
-			uniform float planeHeight;
-			uniform vec3 cameraPosWorldSpace;
-
-			uniform vec3 sunPosition;			
-
-			// varying vec3 interpolatedNormalViewSpace;
-			// varying vec3 interpolatedNormalWorldSpace;
-			// varying vec3 lightDirectionViewSpace;
+			uniform float time;			
+			
 			varying vec4 fragWorldPos;
-			//varying vec4 lightPositionWorldSpace;
-			vec3 randVector;
 
 			// varying mat4 test;
 			void main()
 			{		
-				// Calculating new displaced position
-				vec3 displacedPosition = position.xyz + normal;
-				gl_Position = projectionMatrix * modelViewMatrix * vec4(displacedPosition, 1.0);
-
-				// Forward difference sample points
-				float h = 0.1;
-				vec3 forwardPointX = vec3(position.x + h, position.y, position.z);
-				vec3 forwardPointY = vec3(position.x, position.y + h, position.z);
-
-				// Displacement
-				float forwardPointXDisp = 1.0;
-				float forwardPointYDisp = 1.0;
-				vec3 forwardPointXDispPos = forwardPointX + forwardPointXDisp * normal;
-				vec3 forwardPointYDispPos = forwardPointY + forwardPointYDisp * normal;
-
-				// Difference vectors
-				vec3 diffVectorX = normalize(displacedPosition - forwardPointXDispPos);
-				vec3 diffVectorY = normalize(displacedPosition - forwardPointYDispPos);
-
-				// New normal
-				vec3 newNormal = normalize(cross(diffVectorX, diffVectorY));
-
-				// test = mat4(viewMatrix * projectionMatrix);
-				
-				// Transformation of 'varyings'
-				//interpolatedNormalWorldSpace = normalize(mat3(modelMatrix) * newNormal);
-				//interpolatedNormalViewSpace = normalize(mat3(modelViewMatrix) * newNormal);
-				// lightDirectionViewSpace = normalize(mat3(viewMatrix) * normalize(vec3(0.0, 1.0, 1.0)));
-				//lightPositionWorldSpace = vec4(sunPosition.x, sunPosition.y, sunPosition.z, 1.0);
-				fragWorldPos = vec4(displacedPosition, 1.0) * modelMatrix; // gl_Position * modelMatrix;
+				gl_Position = projectionMatrix * modelViewMatrix * vec4(position.xyz, 1.0);
+				fragWorldPos = modelMatrix 	  * vec4(position, 1.0); // gl_Position * modelMatrix;
 			}
 			
 		</script>
@@ -401,7 +369,7 @@
 		  p2 *= norm.z;
 		  p3 *= norm.w;
 
-		// Mix fin,,,,,,,,kkal noise value
+		// Mix final noise value
 		  vec4 m = max(0.6 - vec4(dot(x0,x0), dot(x1,x1), dot(x2,x2), dot(x3,x3)), 0.0);
 		  m = m * m;
 		  return 42.0 * dot( m*m, vec4( dot(p0,x0), dot(p1,x1), 
@@ -427,15 +395,16 @@
 		uniform vec3 mousePositionWorldSpace;	// world coordinates
 		
 		// Uniforms that can be changed in the GUI
-		uniform int 	mystery_function;		// activates mysterFunction() instead of Fog()
-		uniform float 	noise_frequency;		// how much noise that shall be applied, intervall set to [0.0, 2.0]
-		uniform float 	radius;					// radius of the fog
-		uniform int 	noise_type;				// describe which noise funciton that shall be used for the fog
+		uniform int 	mystery_function;				// activates mysterFunction() instead of Fog()
+		uniform float 	noise_frequency;				// how much noise that shall be applied (noise applied to the shape of the fog)
+		uniform float 	noise_frequency_for_the_color;	// how much noise that shall be applied (noise applied when determining the color of the fog)
+		uniform float 	radius;							// radius of the fog
+		uniform int 	noise_type_fog_shape;			// describe which noise funciton that shall be used for the fog (noise applied to the shape of the fog)
+		uniform int 	noise_type_fog_color;			// describe which noise funciton that shall be used for the fog (noise applied when determining the color of the fog)
 
 		// Varying variables set in the vertex shader
-		//varying vec3 interpolatedNormalWorldSpace;
 		varying vec4 fragWorldPos;
-		//varying vec4 lightPositionWorldSpace;
+		
 	
 		// "Global" variables that is used in functions below
 		vec3 viewDirectionWorldSpace;
@@ -462,7 +431,7 @@
 
 		/**
 		*	The results from this function was created when trying to create the function fog().
-		*	These functions are quite similar with the exception that this one creates simplex 
+		*	These functions are quite similar with the exception that this one creates perlin 
 		* 	noise and applies it on the final color that this function returns.
 		**/
 		vec4 mysteryFunction(vec3 pos) {
@@ -495,35 +464,28 @@
 
 		/* Function fog() */
 		vec4 fog(vec3 pos) {
-			float frequency = 0.2;
-			// Use the perlin noise function Cnoise, in order to retrieve a pseudo random number
-			// (add one and divide by two, in order to make sure the value is in the intervall 0,1)
-			float fogValue = (cnoise(pos * frequency) + 1.0) / 2.0;				// [0,1]
-
-			// Fog color
-			const vec3 fogColor = vec3(0.7, 0.7,0.7);
+			// Set the noise frequency to the value from the GUI
+			float frequency = noise_frequency_for_the_color;
 			
-			// distance, dependence to current camera gl_Position
-			float dist = 0.0;
-			dist = (gl_FragCoord.z / gl_FragCoord.w);
-
-			// Calculate a fogFactor for an exponential fog, inspired by link: http://in2gpu.com/2014/07/22/create-fog-shader/
-			float fogFactor = 0.0;
-			fogFactor = 1.0 /exp( dist);				// exponential fog
-   			fogFactor = clamp( fogFactor, 0.0, 1.0 );
+			// Set fogValue to 0.5 if no noise is to be added to the color (in order to color it 0.5 with the fogColorMix and 0.5 with the blurryColor).
+			// Otherwise call the noise function chosen by the user in the GUI at the intervall [0,0.5]
+			float fogValue = (noise_type_fog_color == 0) ? 0.1 : ( (noise_type_fog_color == 1) ? ( (snoise(pos * frequency) + 1.0)/4.0)  : ( (cnoise(pos * frequency) + 1.0)/ 4.0) );				// intervall [0,0.5] for the simplex noise
+			
+			// Fog color
+			const vec3 fogColor = vec3(1.0, 1.0, 1.0);
 
    			// The image containing the secret message is painted in black and white. The message is written in darker colors.
    			// Check if the hiddenMessageColor is < 0.7 (ergo, a secret message)
-   			// 	IF TRUE: Mix the blurry background color with the fogColor 
+   			// 	IF TRUE: Mix the background color with a mix of fogColor and blurry color (on the secret message) 
    			// 	ELSE: 	 Mix the blurry background color with the hiddenMessageColor and then with the fogColor.
    			// The mix function works like this: mix(fogColor, blurryColor, fogFactor) == fogColor*(1-fogFactor) + blurryColor*fogFactor
    			vec4 fogColorMix = vec4(0.0,0.0,0.0,0.0);
    			fogColorMix = (hiddenMessageColor.x < 0.7 || hiddenMessageColor.y < 0.7 || hiddenMessageColor.z < 0.7) 	?
-   			 				( vec4( mix( fogColor, vec3(blurryColor), fogFactor ), 1.0 ) )							: 
-   							( vec4( mix( mix( vec3(blurryColor) , vec3(hiddenMessageColor), 1.0 - fogFactor), fogColor, fogFactor ), 1.0 ) );
+   			 				0.3 * backgroundColor + 0.7 * vec4( mix( fogColor, vec3(blurryColor), 0.5 ), 1.0 )		: 
+   							(1.0 - fogValue) * vec4(fogColor, 1.0) + fogValue * backgroundColor ;//vec4(mix(fogColor, vec3(blurryColor), 0.5), 1.0);//( vec4( mix( mix( vec3(blurryColor) , vec3(hiddenMessageColor), 0.5), fogColor, 0.5 ), 1.0 ) );
 
-   			// Return vec4, containting (a mixture of) the fogColorMix and blurryColor, depending on how large the valur fogValue is.
-			return (1.0 - fogValue) * fogColorMix + fogValue * blurryColor;
+			return 0.5 * fogColorMix + 0.5 * blurryColor;
+
 		}
 
 		/* Function noFog() will only display the background cube map since no fog is on it */
@@ -571,14 +533,17 @@
 			/** ====================================== **/
 			/* 				Create some noise 			*/
 			/** ====================================== **/
-			// If noise_type == 0 : Simplex Noise
-			// If noise_type == 1 : Perlin  Noise 
-			float currentNoise = (noise_type == 0) ? snoise(fragWorldPos.xyz * noise_frequency) + 1.5 : cnoise(fragWorldPos.xyz) + 2.0;  
+			/** 
+			* If noise_type_fog_shape == 0 : Simplex Noise
+			* If noise_type_fog_shape == 1 : Perlin  Noise
+			* noise_frequency - can be changed by the user in the GUI. 
+			**/
+			float currentNoise = (noise_type_fog_shape == 0) ? snoise(fragWorldPos.xyz * noise_frequency) + 1.5 : cnoise(fragWorldPos.xyz * noise_frequency) + 2.0;  
 			// float tempNoise2 = createSimplexNoise(fragWorldPos.xyz * noise_frequency) + 1.5;
 			
 
 			/* 
-			* Create and set fogOutline to the actual radius and ad simplex noise (in order to get a varied shape of the fog) 
+			* Create and set fogOutline to the actual radius and add noise (in order to get a varied shape of the fog) 
 			* This variable can then be used later in order to determine if fog or no fog shall be created, 
 			* 	(by comparing it with the computed distanceToMouseFromFragment).
 			*/
@@ -586,10 +551,10 @@
 			
 			/** 
 			*	Perform smoothstep() in order to get a smooth transition, with min set to 0.0 and max set to the fogOutline, 
-			* 		and x to the distanceToMouseFromFragmentPosition
-			* 	smoothstep() perfroms a Hermite interpolation (between 0 and 1): returns 3t^2 + 2t^3
-			*		where t = clamp((x - min)(max - min), 0.0, 1.0)
-			*  		to note: results are undefined if max <= min
+			* 	and x to the distanceToMouseFromFragmentPosition.
+			* 	smoothstep() perfroms a Hermite interpolation (between 0 and 1): returns 3t^2 + 2t^3,
+			*	where t = clamp((x - min)(max - min), 0.0, 1.0).
+			*  	(Note: results are undefined if max <= min)
 			**/
 			float smoothy = smoothstep(0.0, fogOutline, distanceToMouseFromFragmentPosition);		// if returns 1.0 then no fog, if 0.0 mycket fog
 			
@@ -604,25 +569,16 @@
 			gl_FragColor = (mystery_function == 0) ?
 							(	(distanceToMouseFromFragmentPosition < fogOutline && distanceToMouseFromFragmentPosition > 0.0) ? (1.0 - smoothy) * fog(fragWorldPos.xyz) + smoothy * noFog() : noFog() ) :
 							( 	(distanceToMouseFromFragmentPosition < fogOutline && distanceToMouseFromFragmentPosition > 0.0) ? (1.0 - smoothy) * mysteryFunction(fragWorldPos.xyz) : noFog()	);
-
 		}
 		</script>
 		<!-- End Shaders -->
 		
 		<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.5.1/jquery.min.js"></script>
 		<script src="js/three.min.js"></script>
-		<script src="js/controls/OrbitControls.js"></script>
-		<script src="js/controls/TrackballControls.js"></script>
-		<script src="js/FlyControls.js"></script>
-
+		<script src="js/controls/FlyControls.js"></script>
 		<script src="js/Detector.js"></script>
 		<script src="js/libs/stats.min.js"></script>
 		<script src="myScene.js"></script>
-
-		<!-- jQuery -->
-    	<!-- // <script src="js/jquery.js"></script> -->
-		<!-- Bootstrap Core JavaScript -->
-    	<!-- // <script src="js/bootstrap.min.js"></script> -->
 
 	</body>
 </html>
